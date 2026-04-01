@@ -32,13 +32,24 @@ const userSchema = new mongoose.Schema(
       default: '',
       maxLength: [150, 'cannot exceed 150 character'],
     },
+    verified: {
+      type: Boolean,
+      required: true,
+      default : false
+    },
+    refreshToken: {
+      type : String,
+    }
   },
   { timestamps: true }
 );
 
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
-  this.password = await bcrypt.hash(this.password, Number(process.env.SALT_ROUNDS));
+  this.password = await bcrypt.hash(
+    this.password,
+    Number(process.env.SALT_ROUNDS)
+  );
 });
 
 export const User = mongoose.model('user', userSchema);
