@@ -3,6 +3,10 @@ import generateOtp from '../services/otpGenerator.services.js';
 import sendOtp from '../services/nodemailer.services.js';
 import bcrypt from 'bcrypt';
 import { Otp } from '../models/otp.models.js';
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from '../utils/jwt.utils.js';
 
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const passwordRegex =
@@ -95,9 +99,26 @@ export const loginUser = async (req, res) => {
         message: 'Please verify your account first',
       });
     }
-    res
-      .status(200)
-      .json({ success: true, saferUser, message: 'User logged in' });
+
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+
+    user.refreshToken = refreshToken;
+    await user.save();
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    };
+
+    res.cookie('refreshToken', refreshToken, options);
+    res.status(200).json({
+      success: true,
+      saferUser,
+      accessToken,
+      message: 'User logged in',
+    });
   } catch (error) {
     console.error('Login error:', error.message, error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -125,6 +146,7 @@ export const verifyOtp = async (req, res) => {
         .status(400)
         .json({ success: false, message: 'enter a valid otp' });
     const { username, password, profilePicture, bio } = otpRecord.tempUserData;
+
     const user = await User.create({
       username,
       email,
@@ -134,10 +156,26 @@ export const verifyOtp = async (req, res) => {
       verified: true,
     });
     await Otp.findOneAndDelete({ email });
-    const { password: _, ...useraData } = user.toObject();
-    res
-      .status(201)
-      .json({ success: true, message: 'user created successfully', useraData });
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    };
+    res.cookie('refreshToken', refreshToken, options);
+
+    const { password: _, refreshToken: __, ...useraData } = user.toObject();
+    res.status(201).json({
+      success: true,
+      message: 'user created successfully',
+      useraData,
+      accessToken,
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ success: false, message: 'failed to verify otp' });
