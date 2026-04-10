@@ -1,11 +1,11 @@
 import jwt from 'jsonwebtoken';
-const authMiddleware = async (req, res, next) => {
+export const authMiddleware = async (req, res, next) => {
   const authHeader = req.header('Authorization');
   if (!authHeader)
     return res.status(401).json({ success: false, message: 'token not found' });
   try {
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.ACCESS_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
@@ -13,4 +13,4 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-export default authMiddleware;
+
