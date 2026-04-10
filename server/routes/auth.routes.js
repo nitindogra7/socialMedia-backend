@@ -3,6 +3,7 @@ import {
   loginUser,
   verifyOtp,
 } from '../controllers/auth.controllers.js';
+import { authMiddleware } from '../middlewares/auth.middleware.js';
 import express from 'express';
 const router = express.Router();
 
